@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>V6 live</title>
+  <style>
+    body { margin: 0; background: #111; color: #d8ffe8; font: 15px/1.4 Consolas, "Cascadia Mono", monospace; }
+    header { padding: 14px 18px 8px; border-bottom: 1px solid #244; }
+    h1 { margin: 0 0 6px; font-size: 20px; color: #3cff8a; }
+    .sub { color: #8aa; font-size: 12px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 18px 0; }
+    .card { background: #181818; border: 1px solid #2a3a2a; padding: 10px 14px; min-width: 140px; }
+    .k { color: #8aa; font-size: 11px; text-transform: uppercase; }
+    .v { font-size: 22px; color: #3cff8a; }
+    .v.warn { color: #ffb000; }
+    .v.bad { color: #ff6b6b; }
+    table { width: calc(100% - 36px); margin: 16px 18px 24px; border-collapse: collapse; }
+    th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #222; }
+    th { color: #8aa; font-weight: normal; }
+    .HIT { color: #3cff8a; }
+    .BLEW { color: #ff6b6b; }
+    .MISS { color: #ffb000; }
+    .SKIP { color: #668; }
+    #stale { color: #ffb000; padding: 0 18px; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Desktop V6 live</h1>
+    <div class="sub">this page is V6 only · not Box keep · not v5 · not 8766</div>
+  </header>
+  <p id="stale"></p>
+  <div class="row">
+    <div class="card"><div class="k">trade WR</div><div class="v" id="wr">—</div></div>
+    <div class="card"><div class="k">day HIT</div><div class="v" id="hit">—</div></div>
+    <div class="card"><div class="k">BLEW</div><div class="v" id="blew">—</div></div>
+    <div class="card"><div class="k">mean $</div><div class="v" id="mean">—</div></div>
+    <div class="card"><div class="k">trades</div><div class="v" id="trades">—</div></div>
+    <div class="card"><div class="k">HIT streak</div><div class="v" id="streak">—</div></div>
+    <div class="card"><div class="k">keep saves</div><div class="v" id="keep">—</div></div>
+    <div class="card"><div class="k">update</div><div class="v" id="upd">—</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>day</th><th>n</th><th>tgt%</th><th>risk%</th><th>pnl</th><th>fills</th><th>grade</th></tr>
+    </thead>
+    <tbody id="tail"></tbody>
+  </table>
+  <script>
+    let lastBytes = "";
+    function cls(n, warn, bad) {
+      if (bad) return "v bad";
+      if (warn) return "v warn";
+      return "v";
+    }
+    function paint(j) {
+      const s = j.summary || {};
+      const wr = 100 * (s.trade_win_rate || 0);
+      const hit = s.days_hit_target || 0;
+      const blew = s.days_blew_risk || 0;
+      const mean = s.mean_dollars || 0;
+      document.getElementById("wr").textContent = wr.toFixed(1) + "%";
+      document.getElementById("hit").textContent = hit + " / " + (s.n_printable || 0);
+      document.getElementById("blew").textContent = String(blew);
+      document.getElementById("blew").className = cls(blew, blew > 0, blew > 8);
+      document.getElementById("mean").textContent = (mean >= 0 ? "+" : "") + mean.toFixed(2);
+      document.getElementById("mean").className = cls(mean, mean < 0, mean < -50);
+      document.getElementById("trades").textContent = String(s.n_trade_closes || 0);
+      const streak = s.hit_streak || 0;
+      document.getElementById("streak").textContent = streak + " / 100";
+      document.getElementById("streak").className = cls(streak, streak > 0 && streak < 20, streak === 0);
+      document.getElementById("keep").textContent = String(s.keep_saves || 0);
+      const u = j.update;
+      document.getElementById("upd").textContent = (u && u.update != null) ? String(u.update) : "—";
+      const rows = (j.tail || []).slice().reverse();
+      const tb = document.getElementById("tail");
+      tb.replaceChildren();
+      for (const d of rows) {
+        const tr = document.createElement("tr");
+        const g = d.grade || "";
+        tr.innerHTML = "<td>" + (d.date || "") + "</td><td>" + (d.n || "") + "</td><td>" +
+          Number(d.target_pct || 0).toFixed(1) + "</td><td>" + Number(d.risk_pct || 0).toFixed(1) +
+          "</td><td>" + Number(d.realized_pnl || 0).toFixed(2) + "</td><td>" + (d.n_fills || 0) +
+          "</td><td class=\"" + g + "\">" + g + "</td>";
+        tb.appendChild(tr);
+      }
+    }
+    async function tick() {
+      try {
+        const r = await fetch("/live.json", { cache: "no-store" });
+        if (!r.ok) { document.getElementById("stale").textContent = "waiting for train…"; return; }
+        const t = await r.text();
+        if (t === lastBytes) return;
+        lastBytes = t;
+        const j = JSON.parse(t);
+        const box = j.goal_pct != null || j.goal_line_pct != null;
+        const v6 = !!(j.summary && (j.last || (j.tail && j.tail.length)));
+        if (box || (!v6 && j.product && j.product !== "Desktop version 6")) {
+          document.getElementById("stale").textContent = "wrong bot — open http://127.0.0.1:8768/live.html";
+          return;
+        }
+        if (!v6) { document.getElementById("stale").textContent = "waiting for first V6 closed day…"; return; }
+        document.getElementById("stale").textContent = "";
+        paint(j);
+      } catch (e) {
+        document.getElementById("stale").textContent = "waiting for serve / train…";
+      }
+    }
+    tick();
+    setInterval(tick, 1500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Tape / price cache (rebuild locally; do not push hundreds of MB)
+data/cache/
+*.pkl
+
+# Live occupancy dumps (churn every update)
+runs/live/
+
+# Card-1 eval walk artifacts (keep card1_report.json + hidden_dates.json)
+runs/card1/eval_*/
+runs/card1/live_status.json
+runs/card1/live_day_book.csv
+runs/card1/*.pt
+
+# Editor
+.DS_Store
+Thumbs.db

@@ -1,0 +1,29 @@
+{
+  "product": "Desktop version 6",
+  "reason": "first vault after 20 printable occupancy days",
+  "update": 0,
+  "hit_streak": 0,
+  "window": {
+    "trade_win_rate": 0.4888888888888889,
+    "n_trade_closes": 630,
+    "n_trade_wins": 308,
+    "mean_dollars": 30.74295454545454,
+    "days": 22,
+    "n_printable": 22,
+    "active_days": 22,
+    "idle_days": 0,
+    "days_hit_target": 3,
+    "days_inside_risk": 13,
+    "days_blew_risk": 9,
+    "days_miss": 10,
+    "days_skip": 0,
+    "days_geometry_skip": 0,
+    "total_pnl": 676.3449999999999,
+    "n_fills": 630,
+    "days_hit_frac": 0.13636363636363635,
+    "equity": 9857.039999999997,
+    "mean_spice": 0.35051136363636365
+  },
+  "occupancy_not_hide100": true,
+  "keep_saves": 1
+}

@@ -1,0 +1,143 @@
+{
+  "trained": {
+    "trade_win_rate": 0.494824016563147,
+    "n_trade_closes": 966,
+    "n_trade_wins": 478,
+    "mean_dollars": -203.207546875,
+    "days": 20,
+    "n_printable": 20,
+    "active_days": 20,
+    "idle_days": 0,
+    "days_hit_target": 0,
+    "days_inside_risk": 7,
+    "days_blew_risk": 13,
+    "days_miss": 7,
+    "days_skip": 0,
+    "days_geometry_skip": 0,
+    "total_pnl": -4064.1509374999996,
+    "n_fills": 966,
+    "days_hit_frac": 0.0,
+    "equity": 9881.170234374995,
+    "mean_spice": 0.316875
+  },
+  "untrained": {
+    "trade_win_rate": 0.4094650205761317,
+    "n_trade_closes": 486,
+    "n_trade_wins": 199,
+    "mean_dollars": 62.05007617187498,
+    "days": 20,
+    "n_printable": 20,
+    "active_days": 20,
+    "idle_days": 0,
+    "days_hit_target": 5,
+    "days_inside_risk": 7,
+    "days_blew_risk": 13,
+    "days_miss": 2,
+    "days_skip": 0,
+    "days_geometry_skip": 0,
+    "total_pnl": 1241.0015234374996,
+    "n_fills": 486,
+    "days_hit_frac": 0.25,
+    "equity": 9567.07,
+    "mean_spice": 0.21173333333333333
+  },
+  "keep": {
+    "keep": false,
+    "trained": {
+      "wr": 0.494824016563147,
+      "hit": 0,
+      "blew": 13,
+      "mean": -203.207546875,
+      "closes": 966,
+      "wins": 478,
+      "printable": 20,
+      "spice": 0.316875
+    },
+    "untrained": {
+      "wr": 0.4094650205761317,
+      "hit": 5,
+      "blew": 13,
+      "mean": 62.05007617187498,
+      "closes": 486,
+      "wins": 199,
+      "printable": 20
+    },
+    "rule": "WR not down AND HIT count UP AND BLEW not up AND mean $ not ~20%+ worse",
+    "not_100_day_done": true
+  },
+  "aux": [
+    {
+      "policy_loss": 0.5670466423034668,
+      "value_loss": 0.002979851560667157,
+      "entropy": 0.23571540415287018,
+      "entropy_coef": 0.08,
+      "aux_loss": 0.31486156582832336,
+      "size_loss": 0.018765529617667198,
+      "lot_loss": 5.4511678172275424e-05,
+      "loss": 0.5673043727874756,
+      "aux_nan": 0.0,
+      "aux_loss_mean": 0.3614671230316162,
+      "aux_loss_max": 0.789609968662262
+    },
+    {
+      "policy_loss": 0.439657062292099,
+      "value_loss": 0.003655224572867155,
+      "entropy": 0.10996221750974655,
+      "entropy_coef": 0.1091273997956306,
+      "aux_loss": 0.07717529684305191,
+      "size_loss": 0.011653581634163857,
+      "lot_loss": 1.8228824046673253e-05,
+      "loss": 0.4345107078552246,
+      "aux_nan": 0.0,
+      "aux_loss_mean": 0.15087903977837414,
+      "aux_loss_max": 0.3820875287055969
+    },
+    {
+      "policy_loss": -0.5239040851593018,
+      "value_loss": 0.0013172994367778301,
+      "entropy": 0.24421216547489166,
+      "entropy_coef": 0.08,
+      "aux_loss": 0.07635503262281418,
+      "size_loss": 0.01022348739206791,
+      "lot_loss": 4.182298289379105e-05,
+      "loss": -0.5379381775856018,
+      "aux_nan": 0.0,
+      "aux_loss_mean": 0.05921380367362872,
+      "aux_loss_max": 0.16901281476020813
+    },
+    {
+      "policy_loss": 0.07490527629852295,
+      "value_loss": 0.003528203349560499,
+      "entropy": 0.19173303246498108,
+      "entropy_coef": 0.08,
+      "aux_loss": 0.01789647340774536,
+      "size_loss": 0.006863507907837629,
+      "lot_loss": 3.1177958135231165e-06,
+      "loss": 0.062912218272686,
+      "aux_nan": 0.0,
+      "aux_loss_mean": 0.08883242052979767,
+      "aux_loss_max": 0.29767778515815735
+    },
+    {
+      "policy_loss": 0.19532103836536407,
+      "value_loss": 0.004581723362207413,
+      "entropy": 0.21351495385169983,
+      "entropy_coef": 0.08,
+      "aux_loss": 0.01627630740404129,
+      "size_loss": 0.006338661070913076,
+      "lot_loss": 1.1184412869624794e-05,
+      "loss": 0.1819794923067093,
+      "aux_nan": 0.0,
+      "aux_loss_mean": 0.02255054793204181,
+      "aux_loss_max": 0.03806975111365318
+    }
+  ],
+  "spice": {
+    "sum": 5.466500000000001,
+    "capped_days": 1,
+    "aux_n": 711,
+    "aux_pos": 3
+  },
+  "hide_days": 20,
+  "not_100_day_done": true
+}
