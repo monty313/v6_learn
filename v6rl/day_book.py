@@ -26,6 +26,14 @@ class DayRecord:
     n_trade_wins: int = 0
     printable: bool = True
     spice: float = 0.0
+    imm_candy: float = 0.0
+    pend_earned: float = 0.0
+    pend_paid: float = 0.0
+    pend_forfeit: float = 0.0
+    r_day: float = 0.0
+    r_step_total: float = 0.0
+    progress: float = 0.0
+    progress_pairs: str = ""
 
     @property
     def hit_target(self) -> bool:
@@ -72,6 +80,14 @@ def record_from_env(env) -> DayRecord:
         n_trade_wins=int(book.n_trade_wins),
         printable=bool(getattr(env, "_printable", True)),
         spice=float(getattr(env.rew.stats, "last_day_spice", 0.0)),
+        imm_candy=float(getattr(env.rew.day, "immediate", 0.0)),
+        pend_earned=float(getattr(env.rew.day, "pending_earned", 0.0)),
+        pend_paid=float(getattr(env.rew.day, "pending_paid", 0.0)),
+        pend_forfeit=float(getattr(env.rew.day, "pending_forfeit", 0.0)),
+        r_day=float(getattr(env.rew.day, "r_day", 0.0)),
+        r_step_total=float(getattr(env.rew.day, "r_step_total", 0.0)),
+        progress=float(getattr(env.rew.day, "progress", 0.0)),
+        progress_pairs=",".join(getattr(env.rew.progress, "last_paid_pairs", ()) or ()),
     )
 
 
@@ -221,6 +237,8 @@ _CSV_HEADER = [
     "equity",
     "printable",
     "spice",
+    "progress",
+    "progress_pairs",
 ]
 
 
@@ -243,6 +261,8 @@ def _csv_row(d: DayRecord) -> list:
         f"{d.equity:.2f}",
         int(d.printable),
         f"{d.spice:.4f}",
+        f"{d.progress:.6f}",
+        d.progress_pairs,
     ]
 
 

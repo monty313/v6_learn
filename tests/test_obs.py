@@ -18,6 +18,15 @@ def test_obs_names_include_money_and_bb():
     assert len(BB_NAMES) == BB_BIT_COUNT == 6
     assert OBS_DIM == len(FEATURE_NAMES)
     assert OBS_DIM > 50
+    for name in (
+        "consecutive_nonwin_days",
+        "consecutive_breach_days",
+        "immediate_candy_paid_today",
+        "pending_candy_today",
+        "remaining_target",
+        "remaining_risk",
+    ):
+        assert name in FEATURE_NAMES, name
 
 
 def test_dump_prints(capsys):

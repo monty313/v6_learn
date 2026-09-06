@@ -1,4 +1,4 @@
-from v6rl.product import SPICE_PER_DAY_CAP
+from v6rl.product import PHASE_CLOSES, PHASE_DAY, PHASE_FULL, SPICE_PER_DAY_CAP, phase_for_update
 from v6rl.rewards import (
     RewardEngine,
     clean_day_spice,
@@ -7,6 +7,28 @@ from v6rl.rewards import (
     fast_green_spice,
     primary_r,
 )
+
+
+def _close(eng: RewardEngine, pnl: float = 200.0, target: float = 1000.0) -> float:
+    return eng.on_close(
+        pnl=pnl,
+        target_dollars=target,
+        lots=1.0,
+        side=1,
+        n5=8,
+        match15=True,
+        k_htf=4,
+        stay_green_ok=True,
+        held_5m=True,
+        held_s=4,
+        cci30_15m=200.0,
+        cci30_1h=200.0,
+        cci100_15m=200.0,
+        cci100_1h=200.0,
+        bars_to_first_green=1.0,
+        hour_wins=6,
+        hour_losses=0,
+    )
 
 
 def test_primary_clip():
@@ -58,6 +80,22 @@ def test_blank_day_resets_day_streak():
     assert streak == 3
 
 
+def test_take_1090_and_terminal():
+    eng = RewardEngine()
+    paid = eng._take_1090(0.10, 0.10, "ha", 10.0)
+    assert abs(paid - 0.01) < 1e-9
+    assert abs(eng.day.pending - 0.09) < 1e-9
+    hit_extra = eng.settle_pending(day_hit=True)
+    assert abs(hit_extra - 0.09) < 1e-9
+    eng2 = RewardEngine()
+    assert abs(eng2.terminal_day("HIT") - 0.20) < 1e-9
+    assert abs(eng2.terminal_day("MISS") - (-0.02)) < 1e-9
+    assert abs(eng2.terminal_day("MISS") - (-0.03)) < 1e-9
+    blew = RewardEngine()
+    assert abs(blew.terminal_day("BLEW") - (-0.10)) < 1e-9
+    assert abs(blew.terminal_day("BLEW") - (-0.15)) < 1e-9
+
+
 def test_spice_cap_clips_day():
     eng = RewardEngine()
     # dump spices until global cap
@@ -68,8 +106,75 @@ def test_spice_cap_clips_day():
     assert extra == 0.0
 
 
+def test_primary_only_strips_spices_terminal_progress():
+    eng = RewardEngine()
+    eng.set_primary_only(True)
+    assert eng.progress.enabled is False
+    assert eng.phase == PHASE_CLOSES
+    probe = RewardEngine()
+    paid = probe._take_1090(0.10, 0.10, "ha", 10.0)
+    assert abs(paid - 0.01) < 1e-9
+    r = _close(eng)
+    assert abs(r - 0.2) < 1e-9
+    assert eng.day.spice == 0.0
+    assert abs(eng.terminal_day("HIT")) < 1e-12
+    assert abs(eng.terminal_day("BLEW")) < 1e-12
+    day = eng.on_day_end(
+        grade="HIT",
+        day_hit=True,
+        wins=4,
+        losses=0,
+        closes_today=4,
+        had_trade=True,
+        printable=True,
+        day_pnl=200.0,
+    )
+    assert day == 0.0
+    assert eng.progress.n_days == 0
+    eng.set_primary_only(False)
+    assert eng.progress.enabled is True
+    assert abs(eng.terminal_day("HIT") - 0.20) < 1e-9
+    assert eng.phase == PHASE_FULL
+
+
+def test_phase_for_update_50_50():
+    assert phase_for_update(0, 50, 50) == PHASE_CLOSES
+    assert phase_for_update(49, 50, 50) == PHASE_CLOSES
+    assert phase_for_update(50, 50, 50) == PHASE_DAY
+    assert phase_for_update(99, 50, 50) == PHASE_DAY
+    assert phase_for_update(100, 50, 50) == PHASE_FULL
+
+
+def test_day_phase_harness_paycheck_only():
+    eng = RewardEngine()
+    eng.set_phase(PHASE_DAY)
+    assert eng.progress.enabled is False
+    assert _close(eng, pnl=200.0, target=1000.0) == 0.0
+    assert eng.day.r_step_total == 0.0
+    assert eng.day.spice == 0.0
+    assert abs(eng.terminal_day("HIT") - 1.0) < 1e-12
+    assert abs(eng.terminal_day("BLEW") - (-0.5)) < 1e-12
+    assert abs(eng.terminal_day("MISS") - (-0.15)) < 1e-12
+    assert abs(eng.terminal_day("SKIP") - 0.0) < 1e-12
+    day = eng.on_day_end(
+        grade="HIT",
+        day_hit=True,
+        wins=4,
+        losses=0,
+        closes_today=4,
+        had_trade=True,
+        printable=True,
+        day_pnl=400.0,
+    )
+    assert day == 0.0
+    assert eng.progress.n_days == 0
+    eng.set_phase(PHASE_FULL)
+    assert abs(eng.terminal_day("HIT") - 0.20) < 1e-9
+
+
 def test_engine_2_7_and_2_16_hit_gates():
     eng = RewardEngine()
+    eng.progress.enabled = False
     eng.pending_dual_15m = True
     r = eng.on_day_end(grade="MISS", day_hit=False, wins=4, losses=0, closes_today=4, had_trade=True)
     assert r == 0.0

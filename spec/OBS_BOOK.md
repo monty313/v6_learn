@@ -21,6 +21,12 @@ Work in: `C:\Users\C2K\Desktop\V6`.
 | `risk_left` | remaining risk (scaled) |
 | `session_on` | in session |
 | `session_time_frac` | session elapsed 0..1 |
+| `consecutive_nonwin_days` | career non-HIT streak (eval reset) |
+| `consecutive_breach_days` | career BLEW streak (eval reset) |
+| `immediate_candy_paid_today` | 10% spice paid so far today |
+| `pending_candy_today` | 90% bank (forfeit unless HIT) |
+| `remaining_target` | leftover / target (same scale as leftover_to_target) |
+| `remaining_risk` | leftover risk / risk |
 
 ---
 

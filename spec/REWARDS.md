@@ -44,16 +44,34 @@ SPICE_PER_DAY_CAP = +0.50
 Sum of all non-2.1 spices in a calendar day cannot exceed this. Primary `r_step` is separate (only its own −1..+1 clip).
 
 ### 2.1 Primary — closed trade dollars (always on)
+
+**CARD_CLOSES_THEN_DAY (2026-09-05):** three stages in one occupancy student. Typed target/risk rails stay (printable, HIT/BLEW flatten). Channel B is not money. Do **not** copy this student to `runs/live` or treat it as the official run unless its scorecard beats keep (trade WR → day HIT → BLEW not up → mean $). Ticket leftover pay stays OFF.
+
+| Updates | Channel A money |
+|---|---|
+| 0–49 (`close_only_updates=50`) | **2.1 only** — `r_step = clip(close_$ / today's_target_$, −1, +1)`. Terminal / spices / 2.18 off. |
+| 50–99 (`day_only_updates=50`) | **Day paycheck only** (HARNESS.md): HIT **+1.0**, BLEW **−0.5**, MISS **−0.15**, SKIP **0**. No 2.1. No spices. No 2.18. |
+| 100+ | **Full normal** — 2.1 + 2.2 (`+0.20 / −0.02 / −0.10` escalations) + 2.4–2.17 10/90 + 2.18. |
+
+`phase_for_update` in `v6rl/product.py` is the switch. See `spec/LEARN.md`.
+
+**Muscle memory (2026-09-05, Mark):** after a day grades, PPO **actor** step weights are HIT **2.0**, MISS/SKIP **0.15**, BLEW **0.0**. The **critic** still trains on every day (so BLEW teaches “don’t”). No wait lock. No leftover-force. Stamp (HIT up + WR down) means **do not overwrite keep** — it does **not** reload keep into the live net. Winning-day weights stay. Promote keep only if the keep rule passes.
 ```
 target_dollars = account * today's_target_percent
 r_step = clip( pnl_close_after_fees / target_dollars , -1.0 , +1.0 )
 ```
 
-### 2.2 Day HIT/BLEW/MISS large candy — OFF
+### 2.2 Day terminal (ON — CARD_10_90_HITGATE) + 10/90 spice
 ```
-REWARD_DAY_HIT = REWARD_DAY_BLEW = REWARD_DAY_MISS = REWARD_DAY_SKIP = 0.0
+REWARD_DAY_HIT = +0.20
+REWARD_NONWIN_BASE = -0.02
+REWARD_BREACH_BASE = -0.10
+NONWIN_ESCALATION = -0.01 * min(consecutive_nonwin_days - 1, 5)
+BREACH_ESCALATION = -0.05 * min(consecutive_breach_days - 1, 5)
 ```
-Flatten rails + logging still use HIT/BLEW/MISS/SKIP.
+HIT resets both streak counters. MISS/SKIP/no-trade increment nonwin only. BLEW increment breach only. Counters persist in ckpt; reset at eval / hide-20. Terminal logged as `r_day`, not spice.
+
+**10/90 candy (temporary):** on-close spices 2.4–2.6 / 2.10 / 2.12–2.15 / 2.17 pay 10% now, bank 90% as `pending_candy`. HIT pays the bank (cap on paid only). MISS/SKIP/BLEW/no-trade forfeit. Day-end HIT-gated 2.5B / 2.7 / 2.8 / 2.9 / 2.11 / 2.16 stay full-on-HIT (already deferred). Flatten rails still use HIT/BLEW/MISS/SKIP.
 
 ### 2.3 Ticket / leftover pay — OFF
 ```
@@ -315,6 +333,34 @@ If never green until a green close on bar N, `bars_to_first_green = N` (still el
 
 OBS: `bars_to_first_green`, `best_bars_to_first_green_buy`, `best_bars_to_first_green_sell`, `fast_green_pb_flag`.
 
+### 2.18 Career progress (ON — additive, unique keys)
+
+Six tiny **day-end** bonuses. They do **not** change §§2.1–2.17, 10/90, or terminal `r_day`. Full pay via `_take` (not 10/90). Clip the six-pair sum to `NEW_PROGRESS_BONUS_PER_DAY_CAP = +0.010` first, then sit inside `SPICE_PER_DAY_CAP = +0.50`.
+
+Career stats = this resume forward, **completed printable days only**. Keep ckpt with no progress book starts empty. Persist paid-key sets, comparison records, streaks, multipliers, career totals, and used T/R keys in the checkpoint. `reset_eval_streaks` clears the book so hide-20 does not leak train career.
+
+Progress-only rates (normal HIT/BLEW/MISS/SKIP labels unchanged):
+
+```
+progress_BLEW = normal_BLEW + no_trade + SKIP
+progress_MISS = normal_MISS + no_trade + SKIP
+```
+
+No-trade / SKIP never progress HIT. Integer keys only (rates → bps, mean $ → cents, streaks → days). Duplicate complete key → 0.
+
+Pairs (each +0.001 base; consecutive same-pair pays 1.00→1.25→1.50→1.75→2.00x; any MISS/BLEW/no-trade/SKIP resets every pair’s consecutive counter):
+
+- **A** HIT rate strictly up vs highest paid A, and progress BLEW ≤ last paid A
+- **B** mean day $ strictly up vs highest paid B, and trade WR ≥ last paid B
+- **C** HIT streak ≥ 2 and strictly longer than longest paid C, today is HIT
+- **D** progress BLEW ≥ 200 bps lower than last paid D, and HIT rate ≥ last paid D
+- **E** progress MISS ≥ 200 bps lower than last paid E, and trade WR ≥ last paid E
+- **F** positive-day streak ≥ 2 and strictly longer than longest paid F (HIT always positive; traded MISS with PnL>0 extends; zero/neg/BLEW/no-trade/SKIP reset)
+
+First printable-day rule: Pair A/B/D/E may pay once on the first unique key (missing last-paid comparisons are permissive only then). Later pays need a new key and the strict record / 200 bps / not-worse rules.
+
+Train date wrap: a later lap of the same calendar date must not reuse a `(date, target_bin, risk_bps)` already used this resume. Eval T/R seed path is unchanged.
+
 ---
 
 ## 3. Forbidden as reward
@@ -345,7 +391,7 @@ r = r_step + HA + TRADE_STREAK + STAY_GREEN + SMA_TUNNEL + CCI_PB_15M + CCI_PB_1
 ```
 Day end:
 ```
-r += DAY_STREAK + CLEAN_DAY + LOT_PB + CLEAN_HOUR_PB + FAT_TRADE + DUAL_CCI_PB
+r += DAY_STREAK + CLEAN_DAY + LOT_PB + CLEAN_HOUR_PB + FAT_TRADE + DUAL_CCI_PB + PROGRESS_2_18
 ```
 Then clip day’s total spice to `SPICE_PER_DAY_CAP`.
 

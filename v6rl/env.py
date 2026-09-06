@@ -24,8 +24,9 @@ from v6rl.config import (
     typed_risk_pct,
     typed_target_pct,
 )
-from v6rl.geometry import day_can_print, draw_funded_tr
+from v6rl.geometry import day_can_print, draw_funded_tr, draw_unique_funded_tr
 from v6rl.indicators import clip_div, nz
+from v6rl.aux_labels import label_momentum_hold, label_pullback_resolution
 from v6rl.obs import FEATURE_NAMES, OBS_DIM
 from v6rl.product import MIN_LOT, RISK_PCT_MAX, RISK_PCT_MIN, draw_typed_target
 from v6rl.rewards import INF, RewardEngine, cci_side_score, dual_cci_score
@@ -105,6 +106,8 @@ class BookEnv(gym.Env):
         self._hour_closes: list[tuple[int, bool]] = []
         self._day_end_paid = False
         self.last_aux = -1.0
+        self.last_aux_mom = -1.0
+        self.last_aux_pb = -1.0
 
     def set_pending(self, lot_frac, size_scale, **_kw) -> None:
         self.pending.lot_frac = np.asarray(lot_frac, dtype=np.float32).reshape(-1)
@@ -133,7 +136,13 @@ class BookEnv(gym.Env):
             )
             printable = day_can_print(self.tape, date, target, risk, equity)
         else:
-            target, risk, printable = draw_funded_tr(rng, self.tape, date, equity)
+            unique_tr = bool(opt.get("unique_tr", not self.greedy))
+            if unique_tr:
+                target, risk, printable = draw_unique_funded_tr(
+                    rng, self.tape, date, equity, self.rew.progress.used_tr
+                )
+            else:
+                target, risk, printable = draw_funded_tr(rng, self.tape, date, equity)
             target = typed_target_pct(target)
             risk = typed_risk_pct(risk)
         a, b = self.tape.day_slice(np.datetime64(date))
@@ -151,6 +160,8 @@ class BookEnv(gym.Env):
         self._hour_closes.clear()
         self._day_end_paid = False
         self.last_aux = -1.0
+        self.last_aux_mom = -1.0
+        self.last_aux_pb = -1.0
         self._printable = bool(printable)
         if not self._printable:
             self.book.dead = "SKIP"
@@ -438,7 +449,10 @@ class BookEnv(gym.Env):
             losses=self.book.n_trade_losses,
             closes_today=self.book.n_trade_closes,
             had_trade=self.book.tickets_today > 0,
+            printable=bool(self._printable),
+            day_pnl=float(self.book.realized_day),
         )
+        extra += self.rew.terminal_day(str(self.book.dead))
         self._day_end_paid = True
         return extra
 
@@ -471,11 +485,15 @@ class BookEnv(gym.Env):
         reward = 0.0
         exec_action = WAIT
         self.last_aux = -1.0
+        self.last_aux_mom = -1.0
+        self.last_aux_pb = -1.0
         if self.book.dead == "SKIP" and not self._printable:
             reward += self._finish_day()
             obs, info = self._observe()
             info["exec_action"] = WAIT
             info["aux_y"] = -1.0
+            info["aux_mom_y"] = -1.0
+            info["aux_pb_y"] = -1.0
             self._last_obs, self._last_info = obs, info
             return obs, float(reward), True, False, info
 
@@ -487,6 +505,8 @@ class BookEnv(gym.Env):
             obs, info = self._observe()
             info["exec_action"] = WAIT
             info["aux_y"] = self.last_aux
+            info["aux_mom_y"] = self.last_aux_mom
+            info["aux_pb_y"] = self.last_aux_pb
             self._last_obs, self._last_info = obs, info
             return obs, float(reward), True, False, info
 
@@ -504,12 +524,14 @@ class BookEnv(gym.Env):
             if ticket is not None:
                 ticket.prev_close5 = float(self.tape.close5[self.t, i])
                 exec_action = BUY
+                self._label_open(ticket, i)
         elif act == SELL and mid is not None and not self.book.dead:
             lots = self._lots(s, mid, risk_left)
             ticket = self.book.open_ticket(s, -1, lots, mid, self.t)
             if ticket is not None:
                 ticket.prev_close5 = float(self.tape.close5[self.t, i])
                 exec_action = SELL
+                self._label_open(ticket, i)
         elif act == CLOSE and self.book.tickets and mid is not None:
             for ticket in list(self.book.tickets):
                 _p, r = self._close_ticket(ticket, mid)
@@ -535,8 +557,22 @@ class BookEnv(gym.Env):
         obs, info = self._observe()
         info["exec_action"] = exec_action
         info["aux_y"] = self.last_aux
+        info["aux_mom_y"] = self.last_aux_mom
+        info["aux_pb_y"] = self.last_aux_pb
         self._last_obs, self._last_info = obs, info
         return obs, float(reward), bool(terminated), False, info
+
+    def _label_open(self, ticket: Ticket, inst: int) -> None:
+        mom = label_momentum_hold(self.tape, self.t, inst, ticket.side)
+        pb = label_pullback_resolution(self.tape, self.t, inst, ticket.side, ticket.entry)
+        self.last_aux_mom = float(mom)
+        self.last_aux_pb = float(pb)
+        if mom >= 0:
+            self.rew.stats.aux_mom_n += 1
+            self.rew.stats.aux_mom_pos += int(mom > 0.5)
+        if pb >= 0:
+            self.rew.stats.aux_pb_n += 1
+            self.rew.stats.aux_pb_pos += int(pb > 0.5)
 
     def _primary(self) -> Ticket | None:
         return self.book.tickets[0] if self.book.tickets else None
@@ -610,6 +646,12 @@ class BookEnv(gym.Env):
             "risk_frac": float(np.clip(used / max(risk_d, 1e-9), 0, 2)),
             "leftover_to_target": leftover,
             "risk_left": float(np.clip(risk_left / max(risk_d, 1e-9), 0, 2)),
+            "consecutive_nonwin_days": min(car.consecutive_nonwin_days / 10.0, 2.0),
+            "consecutive_breach_days": min(car.consecutive_breach_days / 10.0, 2.0),
+            "immediate_candy_paid_today": min(self.rew.day.immediate / 0.50, 2.0),
+            "pending_candy_today": min(self.rew.day.pending / 0.50, 2.0),
+            "remaining_target": leftover,
+            "remaining_risk": float(np.clip(risk_left / max(risk_d, 1e-9), 0, 2)),
             "session_on": 1.0 if self.t < self.tape.n and self.tape.session[self.t] else 0.0,
             "session_time_frac": elapsed,
             "flat": 1.0 if ticket is None else 0.0,
@@ -715,6 +757,8 @@ class BookEnv(gym.Env):
             "announce": False,
             "printable": bool(self._printable),
             "aux_y": self.last_aux,
+            "aux_mom_y": self.last_aux_mom,
+            "aux_pb_y": self.last_aux_pb,
             "ideal_lot": cap,
             "risk_cap_lot": cap,
             "size_scale_target": 1.0,

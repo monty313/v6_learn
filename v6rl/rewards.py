@@ -6,7 +6,25 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from v6rl.product import SPICE_PER_DAY_CAP
+from v6rl.product import (
+    CANDY_IMMEDIATE_FRAC,
+    CANDY_PENDING_FRAC,
+    HARNESS_DAY_BLEW,
+    HARNESS_DAY_HIT,
+    HARNESS_DAY_MISS,
+    HARNESS_DAY_SKIP,
+    NEW_PROGRESS_BONUS_PER_DAY_CAP,
+    PHASE_CLOSES,
+    PHASE_DAY,
+    PHASE_FULL,
+    REWARD_BREACH_BASE,
+    REWARD_BREACH_ESC,
+    REWARD_DAY_HIT,
+    REWARD_NONWIN_BASE,
+    REWARD_NONWIN_ESC,
+    SPICE_PER_DAY_CAP,
+)
+from v6rl.progress_bonuses import ProgressBook
 
 INF = float("inf")
 
@@ -187,6 +205,8 @@ class Career:
     best_dual_cci_1h_sell: float = -INF
     best_bars_to_first_green_buy: float = INF
     best_bars_to_first_green_sell: float = INF
+    consecutive_nonwin_days: int = 0
+    consecutive_breach_days: int = 0
 
 
 @dataclass
@@ -207,6 +227,14 @@ class DayBuckets:
     lot_pb: float = 0.0
     day_streak: float = 0.0
     clean_day: float = 0.0
+    r_step_total: float = 0.0
+    immediate: float = 0.0
+    pending: float = 0.0
+    pending_earned: float = 0.0
+    pending_paid: float = 0.0
+    pending_forfeit: float = 0.0
+    r_day: float = 0.0
+    progress: float = 0.0
 
 
 @dataclass
@@ -218,6 +246,17 @@ class SpiceStats:
     last_day_spice: float = 0.0
     aux_n: int = 0
     aux_pos: int = 0
+    aux_mom_n: int = 0
+    aux_mom_pos: int = 0
+    aux_pb_n: int = 0
+    aux_pb_pos: int = 0
+    imm_candy: float = 0.0
+    pend_HIT: float = 0.0
+    pend_forfeit: float = 0.0
+    max_nonwin: int = 0
+    max_breach: int = 0
+    progress_sum: float = 0.0
+    progress_max_day: float = 0.0
 
 
 @dataclass
@@ -237,6 +276,22 @@ class RewardEngine:
     last_cci100_pb_1h: bool = False
     last_fast_green_pb: bool = False
     last_fat: bool = False
+    progress: ProgressBook = field(default_factory=ProgressBook)
+    phase: str = PHASE_FULL
+    primary_only: bool = False
+
+    def set_phase(self, phase: str) -> None:
+        """closes=2.1 only; day=HARNESS HIT/BLEW/MISS/SKIP only; full=2.1–2.18."""
+        p = str(phase)
+        if p not in (PHASE_CLOSES, PHASE_DAY, PHASE_FULL):
+            raise ValueError(f"unknown reward phase {p!r}")
+        self.phase = p
+        self.primary_only = p == PHASE_CLOSES
+        self.progress.enabled = p == PHASE_FULL
+
+    def set_primary_only(self, on: bool) -> None:
+        """Back-compat: on = closes (2.1 only); off = full."""
+        self.set_phase(PHASE_CLOSES if on else PHASE_FULL)
 
     def reset_day(self) -> None:
         self.day = DayBuckets()
@@ -253,6 +308,12 @@ class RewardEngine:
         self.last_fast_green_pb = False
         self.last_fat = False
 
+    def reset_eval_streaks(self) -> None:
+        """Eval / hide-20 start — do not leak train occupancy streaks."""
+        self.career.consecutive_nonwin_days = 0
+        self.career.consecutive_breach_days = 0
+        self.progress.reset()
+
     def _take(self, amount: float, event_cap: float, day_attr: str, day_cap: float) -> float:
         amt = min(max(0.0, float(amount)), float(event_cap))
         used = float(getattr(self.day, day_attr))
@@ -262,6 +323,69 @@ class RewardEngine:
         setattr(self.day, day_attr, used + amt)
         self.day.spice += amt
         return amt
+
+    def _take_1090(self, amount: float, event_cap: float, day_attr: str, day_cap: float) -> float:
+        """Pay 10% now (cap on paid); bank 90% until HIT. Ineligible amount is 0."""
+        amt = min(max(0.0, float(amount)), float(event_cap))
+        used = float(getattr(self.day, day_attr))
+        amt = min(amt, max(0.0, float(day_cap) - used))
+        if amt <= 0.0:
+            return 0.0
+        setattr(self.day, day_attr, used + amt)
+        imm = CANDY_IMMEDIATE_FRAC * amt
+        bank = CANDY_PENDING_FRAC * amt
+        room = SPICE_PER_DAY_CAP - self.day.spice
+        imm = min(imm, max(0.0, room))
+        self.day.spice += imm
+        self.day.immediate += imm
+        self.day.pending += bank
+        self.day.pending_earned += bank
+        return imm
+
+    def settle_pending(self, *, day_hit: bool) -> float:
+        bank = float(self.day.pending)
+        self.day.pending = 0.0
+        if day_hit:
+            room = SPICE_PER_DAY_CAP - self.day.spice
+            paid = min(bank, max(0.0, room))
+            self.day.spice += paid
+            self.day.pending_paid += paid
+            return paid
+        self.day.pending_forfeit += bank
+        return 0.0
+
+    def terminal_day(self, grade: str) -> float:
+        if self.phase == PHASE_CLOSES:
+            self.day.r_day = 0.0
+            return 0.0
+        if self.phase == PHASE_DAY:
+            g = str(grade)
+            if g == "HIT":
+                r = float(HARNESS_DAY_HIT)
+            elif g == "BLEW":
+                r = float(HARNESS_DAY_BLEW)
+            elif g == "MISS":
+                r = float(HARNESS_DAY_MISS)
+            else:
+                r = float(HARNESS_DAY_SKIP)
+            self.day.r_day = r
+            return r
+        if grade == "HIT":
+            self.career.consecutive_nonwin_days = 0
+            self.career.consecutive_breach_days = 0
+            r = float(REWARD_DAY_HIT)
+        elif grade == "BLEW":
+            self.career.consecutive_breach_days += 1
+            n = self.career.consecutive_breach_days
+            r = float(REWARD_BREACH_BASE) + float(REWARD_BREACH_ESC) * min(n - 1, 5)
+        else:
+            self.career.consecutive_nonwin_days += 1
+            n = self.career.consecutive_nonwin_days
+            r = float(REWARD_NONWIN_BASE) + float(REWARD_NONWIN_ESC) * min(n - 1, 5)
+        self.stats.max_nonwin = max(self.stats.max_nonwin, self.career.consecutive_nonwin_days)
+        self.stats.max_breach = max(self.stats.max_breach, self.career.consecutive_breach_days)
+        self.day.r_day = r
+        return r
 
     def on_close(
         self,
@@ -285,52 +409,57 @@ class RewardEngine:
         hour_losses: int,
     ) -> float:
         self.stats.n_closes += 1
+        if self.phase == PHASE_DAY:
+            return 0.0
         r = primary_r(pnl, target_dollars)
+        self.day.r_step_total += r
         self.stats.n_primary += 1
+        if self.phase == PHASE_CLOSES:
+            return r
         profit = pnl > 0.0
 
         ha = ha_agreement_spice(profit=profit, n5=n5, match15=match15, k_htf=k_htf)
-        r += self._take(ha, 0.03, "ha", 0.06)
+        r += self._take_1090(ha, 0.03, "ha", 0.06)
 
         ts_pay, self.career.trade_win_streak = trade_streak_spice(pnl, self.career.trade_win_streak)
-        r += self._take(ts_pay, 0.10, "trade_streak", 0.25)
+        r += self._take_1090(ts_pay, 0.10, "trade_streak", 0.25)
 
         sg_pay, self.career.stay_green_streak = stay_green_spice(
             passed=bool(stay_green_ok and profit),
             streak_before=self.career.stay_green_streak,
         )
-        r += self._take(sg_pay, 0.05, "stay_green", 0.15)
+        r += self._take_1090(sg_pay, 0.05, "stay_green", 0.15)
 
         tun = sma_tunnel_spice(held_s=held_s, profit=profit, held_5m=held_5m)
-        r += self._take(tun, 0.020, "sma", 0.08)
+        r += self._take_1090(tun, 0.020, "sma", 0.08)
 
         s15 = cci_side_score(cci30_15m, side) if profit else None
         key15 = "best_cci30_15m_buy" if side > 0 else "best_cci30_15m_sell"
         p15, new15, beat15 = cci_pb_spice(s15, getattr(self.career, key15), 0.015)
         setattr(self.career, key15, new15)
         self.last_cci_pb_15m = beat15
-        r += self._take(p15, 0.015, "cci30_15m", 0.06)
+        r += self._take_1090(p15, 0.015, "cci30_15m", 0.06)
 
         s1h = cci_side_score(cci30_1h, side) if profit else None
         key1h = "best_cci30_1h_buy" if side > 0 else "best_cci30_1h_sell"
         p1h, new1h, beat1h = cci_pb_spice(s1h, getattr(self.career, key1h), 0.020)
         setattr(self.career, key1h, new1h)
         self.last_cci_pb_1h = beat1h
-        r += self._take(p1h, 0.020, "cci30_1h", 0.08)
+        r += self._take_1090(p1h, 0.020, "cci30_1h", 0.08)
 
         s100_15 = cci_side_score(cci100_15m, side) if profit else None
         k100_15 = "best_cci100_15m_buy" if side > 0 else "best_cci100_15m_sell"
         p100_15, n100_15, b100_15 = cci_pb_spice(s100_15, getattr(self.career, k100_15), 0.015)
         setattr(self.career, k100_15, n100_15)
         self.last_cci100_pb_15m = b100_15
-        r += self._take(p100_15, 0.015, "cci100_15m", 0.06)
+        r += self._take_1090(p100_15, 0.015, "cci100_15m", 0.06)
 
         s100_1h = cci_side_score(cci100_1h, side) if profit else None
         k100_1h = "best_cci100_1h_buy" if side > 0 else "best_cci100_1h_sell"
         p100_1h, n100_1h, b100_1h = cci_pb_spice(s100_1h, getattr(self.career, k100_1h), 0.020)
         setattr(self.career, k100_1h, n100_1h)
         self.last_cci100_pb_1h = b100_1h
-        r += self._take(p100_1h, 0.020, "cci100_1h", 0.08)
+        r += self._take_1090(p100_1h, 0.020, "cci100_1h", 0.08)
 
         # 2.16 records update at close; pay later if HIT
         d15 = dual_cci_score(cci30_15m, cci100_15m, side) if profit else None
@@ -357,7 +486,7 @@ class RewardEngine:
         else:
             self.career.best_bars_to_first_green_sell = new_fg
         self.last_fast_green_pb = beat_fg
-        r += self._take(fg, 0.020, "fast_green", 0.08)
+        r += self._take_1090(fg, 0.020, "fast_green", 0.08)
 
         if lots > self.career.best_lot_ever + 1e-12:
             self.career.best_lot_ever = float(lots)
@@ -384,7 +513,12 @@ class RewardEngine:
         losses: int,
         closes_today: int,
         had_trade: bool,
+        printable: bool = True,
+        day_pnl: float = 0.0,
     ) -> float:
+        if self.phase != PHASE_FULL:
+            self.stats.last_day_spice = 0.0
+            return 0.0
         skip_or_blank = (grade == "SKIP") or (not had_trade)
         ds, self.career.day_win_streak = day_streak_spice(
             hit=day_hit, no_trade_or_skip=skip_or_blank, streak_before=self.career.day_win_streak
@@ -413,9 +547,24 @@ class RewardEngine:
             day_hit=day_hit, pending_15m=self.pending_dual_15m, pending_1h=self.pending_dual_1h
         )
         r += self._take(dual, 0.055, "dual", 0.055)
-
+        # Already-HIT-gated 2.5B/2.7/2.8/2.9/2.11/2.16 stay full-on-HIT (not 10/90).
+        r += self.settle_pending(day_hit=day_hit)
+        prog = self.progress.on_printable_day(
+            grade=grade,
+            had_trade=had_trade,
+            day_pnl=day_pnl,
+            closes=closes_today,
+            wins=wins,
+            printable=printable,
+        )
+        r += self._take(prog, NEW_PROGRESS_BONUS_PER_DAY_CAP, "progress", NEW_PROGRESS_BONUS_PER_DAY_CAP)
+        self.stats.progress_sum += float(self.day.progress)
+        self.stats.progress_max_day = max(self.stats.progress_max_day, float(self.day.progress))
         self.stats.spice_sum += self.day.spice
         self.stats.last_day_spice = self.day.spice
+        self.stats.imm_candy += self.day.immediate
+        self.stats.pend_HIT += self.day.pending_paid
+        self.stats.pend_forfeit += self.day.pending_forfeit
         if self.day.spice + 1e-12 >= SPICE_PER_DAY_CAP:
             self.stats.spice_capped_days += 1
         return r

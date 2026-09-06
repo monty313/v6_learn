@@ -70,6 +70,8 @@ class PPO:
             "size_scale": size_v,
             "actor_logits": out["actor_logits"][0].detach().cpu().numpy(),
             "aux_logit": float(out["aux_logit"].item()),
+            "aux_mom_logit": float(out["aux_mom_logit"].item()),
+            "aux_pb_logit": float(out["aux_pb_logit"].item()),
         }
 
     @staticmethod
@@ -95,8 +97,14 @@ class PPO:
         t_adv = torch.as_tensor(adv, dtype=torch.float32, device=self.device)
         t_ret = torch.as_tensor(ret, dtype=torch.float32, device=self.device)
         t_aux = torch.as_tensor(batch["aux_y"], dtype=torch.float32, device=self.device)
+        t_mom = torch.as_tensor(batch["aux_mom_y"], dtype=torch.float32, device=self.device)
+        t_pb = torch.as_tensor(batch["aux_pb_y"], dtype=torch.float32, device=self.device)
         t_ss = torch.as_tensor(batch["size_y"], dtype=torch.float32, device=self.device)
         t_lot = torch.as_tensor(batch["lot_y"], dtype=torch.float32, device=self.device)
+        aw = batch.get("actor_w")
+        if aw is None:
+            aw = np.ones(len(adv), dtype=np.float32)
+        t_aw = torch.as_tensor(aw, dtype=torch.float32, device=self.device)
         dones = batch["dones"]
         n = t_obs.size(0)
         mb = min(self.cfg.minibatch, n)
@@ -121,13 +129,33 @@ class PPO:
                 ratio = (logp - t_old[sl]).exp()
                 surr1 = ratio * t_adv[sl]
                 surr2 = ratio.clamp(1.0 - self.cfg.clip_eps, 1.0 + self.cfg.clip_eps) * t_adv[sl]
-                policy_loss = -torch.min(surr1, surr2).mean()
+                pol = -torch.min(surr1, surr2)
+                w = t_aw[sl]
+                wsum = w.sum()
+                if float(wsum.detach()) <= 1e-8:
+                    policy_loss = pol.mean() * 0.0
+                else:
+                    policy_loss = (pol * w).sum() / wsum
                 value_loss = (value - t_ret[sl]).pow(2).mean()
                 valid_aux = t_aux[sl] >= 0
                 if valid_aux.any():
                     aux_loss = F.binary_cross_entropy_with_logits(out["aux_logit"][valid_aux], t_aux[sl][valid_aux])
                 else:
                     aux_loss = torch.zeros((), device=self.device)
+                valid_mom = t_mom[sl] >= 0
+                if valid_mom.any():
+                    aux_mom_loss = F.binary_cross_entropy_with_logits(
+                        out["aux_mom_logit"][valid_mom], t_mom[sl][valid_mom]
+                    )
+                else:
+                    aux_mom_loss = torch.zeros((), device=self.device)
+                valid_pb = t_pb[sl] >= 0
+                if valid_pb.any():
+                    aux_pb_loss = F.binary_cross_entropy_with_logits(
+                        out["aux_pb_logit"][valid_pb], t_pb[sl][valid_pb]
+                    )
+                else:
+                    aux_pb_loss = torch.zeros((), device=self.device)
                 size_loss = (out["size_mean"] - t_ss[sl]).pow(2).mean()
                 lot_ok = t_lot[sl] >= 0
                 if lot_ok.any():
@@ -145,6 +173,8 @@ class PPO:
                     + self.cfg.value_coef * value_loss
                     - c_ent * ent_mean
                     + self.cfg.aux_coef * aux_loss
+                    + self.cfg.aux_momentum_coef * aux_mom_loss
+                    + self.cfg.aux_pullback_coef * aux_pb_loss
                     + self.cfg.size_coef * size_loss
                     + self.cfg.lot_coef * lot_loss
                 )
@@ -161,10 +191,14 @@ class PPO:
                     "entropy": float(ent_mean.item()),
                     "entropy_coef": float(c_ent),
                     "aux_loss": float(aux_loss.item()),
+                    "aux_momentum_loss": float(aux_mom_loss.item()),
+                    "aux_pullback_loss": float(aux_pb_loss.item()),
+                    "aux_nan": 0.0 if torch.isfinite(aux_loss) else 1.0,
+                    "aux_mom_nan": 0.0 if torch.isfinite(aux_mom_loss) else 1.0,
+                    "aux_pb_nan": 0.0 if torch.isfinite(aux_pb_loss) else 1.0,
                     "size_loss": float(size_loss.item()),
                     "lot_loss": float(lot_loss.item()),
                     "loss": float(loss.item()),
-                    "aux_nan": 0.0,
                 }
         if aux_hist:
             last["aux_loss_mean"] = float(np.mean(aux_hist))

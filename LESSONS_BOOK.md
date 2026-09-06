@@ -567,6 +567,41 @@ Each lesson appears once. Families of near-identical Desktop fails are merged un
 - **Evidence:** First live 20-update CPU run was about 60 days in 7 minutes because every session minute called the net (no CUDA). After skipping bars where wait was already the only legal action (flat, Heikin Ashi door off) and keeping 1-minute marks inside a ticket (bars to first green, SMA tunnel, Bollinger bits) with a new ask about every 5 minutes on wait: 200 updates, about 3600 occupancy days in 31 minutes, win rate 45.8 percent (65763/143489), day hits 240 of 3566 printable, day risk spent 754, mean −68.69 dollars, `runs/live/ckpt.pt`. Wait stayed legal; close stayed legal whenever a ticket was open; no leftover-force. Occupancy book, not hide-20 Done. Do not read a faster live board as a better mind.
 - **Product:** Desktop version 6
 
+#### L67. More day hits at a lower win rate must not overwrite the keep — that is a stamp, not a better mind
+- **Worked / Did not / Mixed:** Worked as a vault rule; the occupancy student Did not earn a second keep
+- **Evidence:** Continuous train (`--until-hit-streak 100`) wrote first `runs/keep/ckpt.pt` after 20 printable occupancy days: win rate 48.9 percent (308/630), day hits 3, day risk spent 9, mean +30.74 dollars. Later windows raised day hits to 8, 11, 13, 17 while win rate fell to about 48.0 then 45.6 percent — each time `STAMP REVERT`, keep file left alone. Occupancy later: about 569 day hits of 5966 printable, best hit streak 3, keep saves still 1. The weights you would take live are the keep, not `runs/live/ckpt.pt`. Occupancy streak is not hide-100 Done.
+- **Product:** Desktop version 6
+
+#### L68. CARD_10_90_HITGATE (10/90 candy + day terminal + two future aux heads) failed hide-20 — revert snapshot
+- **Worked / Did not / Mixed:** Did not
+- **Evidence:** Five-update resume from `runs/keep/ckpt.pt` (obs 133→139 pad; new aux heads fresh). Same `runs/card1/hidden_dates.json`. Trained greedy hide-20: win rate 33.8 percent (137/405), day hits 1 of 20, day risk spent 11, mean −234.98 dollars, 405 trades, mean spice 0.043. Untrained same days: win rate 43.5 percent (70/161), day hits 5, day risk spent 10, mean +79.26 dollars, 161 trades. Failed WR down, HIT not up, BLEW up, mean dollars worse, trade count 2.5× (over 1.75×). Train occupancy max non-win streak 13, max breach 4. Aux: ride BCE 0.75→0.006 no NaN; momentum_hold n=3464 pos rate ~0.78 BCE ~0.54; pullback_resolution n=3464 pos rate ~0.56 BCE ~0.69. No aux copied into Channel A. No new lock. Keep file not overwritten. Reverted `runs/snapshots/CARD_10_90_HITGATE_20260905-095559`. Not 100-day Done. No follow-up change.
+- **Product:** Desktop version 6
+
+#### L69. Career-progress bonuses (unique T/R keys, day-end only) failed hide-20 — more tickets, fewer hits, keep not taken
+- **Worked / Did not / Mixed:** Did not
+- **Evidence:** Five-update resume from `runs/keep/ckpt.pt` into `runs/card_career_progress`. Trained greedy hide-20: win rate 32.9 percent (130/395), day hits 1 of 20, day risk spent 11, mean −257.66 dollars. Same-day untrained: win rate 37.8 percent (42/111), day hits 4, day risk spent 15, mean −63.88 dollars. Keep failed: win rate down, day hits not up, trade count about 3.6× (395 vs 111). Pair-book fail counts were dominated by “win rate down” and “hit not higher.” Snapshot before the add: `runs/KEEP_SNAPSHOTS/before_career_progress_bonuses_2026-09-05_1227_ET`. Keep vault file not overwritten (still first occupancy vault, 48.9 percent win rate, 3 hits, mean +30.74 dollars). Not 100-day Done. Do not invent a lock to “fix” it.
+- **Product:** Desktop version 6
+
+#### L70. Staging Channel A (2.1-only, then day grades, then full spices) still reprints the spray occupancy book
+- **Worked / Did not / Mixed:** Did not (as a keep) — three students, same stamp
+- **Evidence:** Same keep vault left alone (48.9 percent win rate, 3 day hits, mean +30.74 dollars). `runs/live` occupancy: win rate 41.4 percent (about 434353 closes), day hits 766 of 10526 printable, day risk spent 1593, mean −71.54 dollars, best hit streak 4, keep saves 0, last gate stamp. `runs/card_primary` (2.1-only then full): win rate 41.4 percent, day hits 467 of 5921, mean −67.63 dollars, best streak 5, keep hold. `runs/card_closes_day` (closes then HARNESS day paycheck then full): win rate 41.6 percent, day hits 277 of 3637, mean −70.66 dollars, best streak 3, last gate stamp. No hide-20 on those three this hour. Not 100-day Done. Do not invent leftover-force to “fix” the reprint.
+- **Product:** Desktop version 6
+
+#### L71. Actor muscle (HIT 2.0 on closes-only stage) lifted occupancy HIT rate and mean dollars — still a stamp versus the keep
+- **Worked / Did not / Mixed:** Mixed — occupancy vs the 41 percent / 7 percent reprint Worked; keep Did not
+- **Evidence:** `runs/card_muscle` at update 41 (still in closes-only 0–49): win rate 44.6 percent, day hits 227 of 1105 printable (about 20.5 percent), mean +2.85 dollars, best hit streak 5, keep saves 0, last gate stamp. Same-hour `runs/live` reprint stayed win rate 41.6 percent, day hits 1093 of 15512 (about 7.0 percent), mean −72.41 dollars, best streak 4. Keep vault unchanged: 48.9 percent win rate, 3 hits, mean +30.74 dollars. Muscle win rate is still below the vault, so HIT-up / WR-down is stamp, not a keep. Occupancy, not hide-20 Done. No leftover-force.
+- **Product:** Desktop version 6
+
+#### L72. Day-paycheck plus HIT-day actor weight broke the 40-ticket spray reprint — BLEW is the new leak; keep still not taken
+- **Worked / Did not / Mixed:** Mixed — occupancy versus the 41 percent / 7 percent / 40-trade reprint Worked; keep Did not
+- **Evidence:** `runs/card_muscle` at update 103 (phase full, just past day-paycheck 50–99): win rate 44.7 percent (18440/41244), day hits 875 of 3473 printable (25.2 percent), day risk spent 1761 (50.7 percent), miss 837, skip 34, mean −11.32 dollars, about 12 closes per printable day, best hit streak 6, keep saves 0, last gate stamp, `actor_w_hit_frac` about 0.19. Same-day spray books (`runs/live`, `card_closes_day`, `card_primary`) stayed about 41.6 percent win rate, 7 percent hits, 16 percent day risk spent, mean about −70 dollars, about 40 trades per day. Keep vault unchanged: 48.9 percent win rate (308/630), 3 hits, 9 day risk spent, mean +30.74 dollars. Stamp still fires because win rate is under the vault — live weights were not reloaded from keep (L71 law). Tail: hit days 1–7 fills; blew days 1–6 fills (fat shot); miss days still 19–44 fills. Why the lift versus spray: stage-2 day paycheck (no per-close crumbs), HIT-day actor 2.0 / miss-skip 0.15 / blew 0, stamp no longer wipes winning-day weights. Why keep failed: win rate still short, mean dollars still worse than the vault, day risk spent worse than both the vault and the spray reprint (blew actor weight 0 does not correct the fat shot). Occupancy, not hide-20 Done. No leftover-force, no wait lock, no leftover-bank close mask.
+- **Product:** Desktop version 6
+
+#### L73. Actor weight 0 on BLEW drops the fat-shot contrast from the policy update — critic seeing the day is not a policy lesson
+- **Worked / Did not / Mixed:** Mixed — diagnosis Worked; the muscle actor-weight law Did not teach stay-inside-risk
+- **Evidence:** Not “the net cannot win.” L72 already has 875 hits of 3473 printable (25.2 percent); those days are 1–7 fills. The learning issue is the update cut. After a day grades, `collect_rollout` stamps every step with `actor_day_weight`: HIT 2.0, MISS/SKIP 0.15, BLEW 0.0 (`v6rl/product.py`, `v6rl/train.py`). PPO computes GAE on all rewards, then multiplies the policy surrogate by that weight; value loss stays unweighted (`v6rl/ppo.py`). A BLEW minibatch zeros policy loss (`wsum` ≤ 1e-8). So the actor copies HIT-day moves and never suppresses the same moves on BLEW days. HIT and BLEW are the same action pattern (few tickets, fat size, go for today’s target); the tape decides the grade. Learning needs both sides. The comment that justified BLEW 0 was the drowning problem: a 13-close hit versus a 48-close miss. The long trajectories are MISS (19–44 fills). BLEW days are short like HIT (1–6), so zeroing them removed the contrast pair, not the drowning pair. Value can learn “this day is bad”; only the weighted policy loss changes what the actor picks. Size and lot heads do not carry the lesson either (size regresses toward 1.0; lot imitates itself). Keep vault on first 20 printable days was 3 hits and 9 day risk spent (45 percent), not 9 of 22. Muscle day risk spent 50.7 percent is worse. Occupancy, not hide-20 Done. No leftover-force, no wait lock.
+- **Product:** Desktop version 6
+
 ---
 
 ## 5. Island / scored-book snapshot (numbers only from sources)
@@ -600,4 +635,19 @@ Each lesson appears once. Families of near-identical Desktop fails are merged un
 
 ---
 
-*Living lesson book. Updated 2026-09-05 after hourly greatest-lesson (L66). Separate products. Never invent locks or fake metrics.*
+*Living lesson book. Updated 2026-09-05 20:48 ET after L73 actor-weight learning diagnosis. Separate products. Never invent locks or fake metrics.*
+
+- 2026-09-05 CARD_10_90_HITGATE: implemented 10/90 HIT-gated candy + terminal day (+0.20/-0.02/-0.10 escalations) + momentum_hold/pullback_resolution aux (0.025 each); hide-20 vs untrained FAILED keep (WR 0.329 < 0.440 base; HIT 1>0; BLEW 11<=15; mean $ -200.74 vs -303.75; closes 313 vs 432). REVERTED from runs/snapshots/CARD_10_90_HITGATE_20260905-095559. No keep promote.
+
+- 2026-09-05 CARD_CAREER_PROGRESS: added six unique-key day-end progress bonuses (+0.001 each, day cap +0.010, inside +0.50 spice) plus unique T/R on train date wrap; snapshot runs/KEEP_SNAPSHOTS/before_career_progress_bonuses_2026-09-05_1227_ET; 5-update hide-20 from keep FAILED keep (WR 0.329 < 0.378; HIT 1<4; BLEW 11<=15; mean $ -257.66 vs -63.88; closes 395 vs 111). No keep promote. Code kept. card_10_90b occupancy left running.
+
+- 2026-09-05 14:03 ET saved occupancy student runs/snapshots/card_career_2026-09-05_1403_ET (update 273 stamp; WR 41.6% on 193042 closes; HIT 333/4661; BLEW 743; mean $-74.76; keep_saves 0; 10/90 forfeit 1375 vs paid 72; progress sum 0.009). Keep vault SHA unchanged. Lesson: ticket candy (primary+spice) + stamp loop; occupancy reprints ~42% WR / 7% HIT / -$70. Next card CARD_PRIMARY_THEN_FULL: 100 updates 2.1 only, then 2.2–2.18 on.
+
+- 2026-09-05 14:40 ET CARD_CLOSES_THEN_DAY plan written to spec/LEARN.md (not a scored lesson). Stages: updates 0–49 = 2.1 closes only; 50–99 = HARNESS day paycheck HIT +1.0 / BLEW −0.5 / MISS −0.15 / SKIP 0; 100+ = full 2.1–2.18. Student folder runs/card_closes_day. Do not copy to runs/live unless the book beats keep (48.9% WR / 3 HIT / +$30.74). No leftover-force. No new lock.
+
+- 2026-09-05 19:08 ET CARD_MUSCLE: actor weights HIT 2.0 / MISS-SKIP 0.15 / BLEW 0 (critic still 1.0). Stamp no longer reloads keep into live — winning-day weights stay. Restart three-stage schedule from keep in runs/card_muscle (0–49 closes, 50–99 day paycheck, 100+ full). Not a scored lesson. Keep only if keep rule passes. No leftover-force. No wait lock.
+
+- 2026-09-05 20:21 ET CARD_MUSCLE occupancy progress (L72, scored Mixed). Update 103, phase full. WR 44.7% (18440/41244); HIT 875/3473 (25.2%); BLEW 1761 (50.7%); mean $-11.32; ~12 closes/printable day; best HIT streak 6; keep_saves 0; stamp (live weights kept, keep file left alone). Versus same-day spray reprint (~41.6% WR / ~7% HIT / ~16% BLEW / ~-$70 / ~40 trades/day): hits, tickets, WR, mean $, streak all better. Versus keep vault (48.9% WR / 3 HIT / 9 BLEW / +$30.74): still stamp — WR short, mean $ worse, BLEW the new leak (fat-shot 1–6 fills; actor_w 0 on BLEW days). Not hide-20 Done. Do not copy to runs/live. No leftover-force. No wait lock.
+
+- 2026-09-05 20:48 ET L73 learning diagnosis (scored Mixed). Actor weight 0 on BLEW drops the fat-shot contrast from the policy update: GAE still sees BLEW rewards, critic still fits them, weighted policy loss zeros those steps. HIT×2 copies short winning books; BLEW×0 never unlearns the same opens/holds/size that spent R. The drowning rationale (13-close HIT vs 48-close MISS) pointed at MISS, not BLEW (1–6 fills, same length as HIT). Critic-only is not a policy lesson. Keep first vault BLEW is 9/20 printable (45%), not 9/22. Occupancy, not Done. No leftover-force. No wait lock.
+

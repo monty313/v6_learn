@@ -10,6 +10,7 @@ import torch
 from v6rl.config import KEEP_CKPT, START_EQUITY, TrainConfig
 from v6rl.day_book import DayBook, record_from_env
 from v6rl.env import BookEnv
+from v6rl.network import load_net_flexible
 from v6rl.obs import dump_obs_names
 from v6rl.ppo import PPO
 from v6rl.product import card1_keep, harness_complete, log_product_choices
@@ -32,6 +33,7 @@ def walk_dates(
     env = BookEnv(tape, greedy=greedy, run_dir=run_dir)
     env.dates = dates
     env.book.equity = START_EQUITY
+    env.rew.reset_eval_streaks()
     board = DayBook(run_dir, n_days=len(dates))
     for i, _date in enumerate(dates):
         obs, info = env.reset(
@@ -103,8 +105,8 @@ def eval_hidden(
         if not path.is_file():
             raise SystemExit("ckpt.pt missing — abort eval")
         blob = torch.load(path, map_location=cfg.device, weights_only=False)
-        ppo.net.load_state_dict(blob["net"])
-        print(f"eval load {path}", flush=True)
+        notes = load_net_flexible(ppo.net, blob["net"])
+        print(f"eval load {path}" + (f"  ({'; '.join(notes)})" if notes else ""), flush=True)
     else:
         print("eval untrained greedy (same hidden days, same T/R seeds)", flush=True)
     ppo.reset_hidden()
@@ -133,6 +135,8 @@ def compare_keep(trained: dict, baseline: dict) -> dict:
         base_hit=int(baseline.get("days_hit_target") or 0),
         base_blew=int(baseline.get("days_blew_risk") or 0),
         base_mean=float(baseline.get("mean_dollars") or 0.0),
+        n_closes=int(trained.get("n_trade_closes") or 0),
+        base_closes=int(baseline.get("n_trade_closes") or 0),
     )
     out = {
         "keep": keep,
@@ -155,7 +159,7 @@ def compare_keep(trained: dict, baseline: dict) -> dict:
             "wins": baseline.get("n_trade_wins"),
             "printable": baseline.get("n_printable"),
         },
-        "rule": "WR not down AND HIT count UP AND BLEW not up AND mean $ not ~20%+ worse",
+        "rule": "WR not down AND HIT up AND BLEW not up AND mean $ not ~20%+ worse AND trade count not >1.75x untrained",
         "not_100_day_done": True,
     }
     print(json.dumps({"card1_keep": out}, default=str), flush=True)

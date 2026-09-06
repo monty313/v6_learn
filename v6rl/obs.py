@@ -19,6 +19,12 @@ MONEY_NAMES: tuple[str, ...] = (
     "risk_left",
     "session_on",
     "session_time_frac",
+    "consecutive_nonwin_days",
+    "consecutive_breach_days",
+    "immediate_candy_paid_today",
+    "pending_candy_today",
+    "remaining_target",
+    "remaining_risk",
 )
 
 POSITION_NAMES: tuple[str, ...] = (

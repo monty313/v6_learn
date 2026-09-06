@@ -41,6 +41,24 @@ def main() -> None:
         default=0,
         help="keep training until this many printable HIT days in a row (0 = use --updates only)",
     )
+    tr.add_argument(
+        "--primary-only-updates",
+        type=int,
+        default=0,
+        help="legacy: first N updates 2.1 only, then full (no day-paycheck stage)",
+    )
+    tr.add_argument(
+        "--close-only-updates",
+        type=int,
+        default=0,
+        help="CARD_CLOSES_THEN_DAY: first N updates score closed-trade $ / target only",
+    )
+    tr.add_argument(
+        "--day-only-updates",
+        type=int,
+        default=0,
+        help="CARD_CLOSES_THEN_DAY: next N updates score HIT/BLEW/MISS/SKIP only",
+    )
     ev = sub.add_parser("eval", help="greedy walk of last-N hidden CEST days")
     ev.add_argument("--hide-days", type=int, default=20)
     ev.add_argument("--seed", type=int, default=7)
@@ -76,6 +94,7 @@ def main() -> None:
         )
         return
     if args.cmd == "train":
+        run_dir = Path(args.run_dir) if args.run_dir else (RUN_DIR / "live")
         train(
             TrainConfig(
                 total_updates=args.updates,
@@ -88,10 +107,14 @@ def main() -> None:
                 end=args.end,
                 device=args.device,
                 rebuild_tape=args.rebuild_tape,
-                run_dir=Path(args.run_dir) if args.run_dir else (RUN_DIR / "live"),
+                run_dir=run_dir,
                 resume_ckpt=Path(args.resume_ckpt) if args.resume_ckpt else None,
                 skip_eval=bool(args.no_eval),
                 until_hit_streak=int(args.until_hit_streak),
+                occupancy_keep=run_dir.name == "live" or int(args.until_hit_streak) > 0,
+                primary_only_updates=int(args.primary_only_updates),
+                close_only_updates=int(args.close_only_updates),
+                day_only_updates=int(args.day_only_updates),
             )
         )
 

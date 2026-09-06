@@ -1,5 +1,5 @@
 from v6rl.day_book import DayRecord, hit_streak, window_summary
-from v6rl.product import card1_keep, is_stamp
+from v6rl.product import actor_day_weight, card1_keep, is_stamp
 
 
 def _rec(*, grade: str, printable: bool = True, closes: int = 1, wins: int = 0, pnl: float = 0.0) -> DayRecord:
@@ -67,3 +67,23 @@ def test_stamp_and_keep_rule():
         base_blew=3,
         base_mean=8.0,
     )
+    assert not card1_keep(
+        wr=0.50,
+        hit=8,
+        blew=2,
+        mean_dollars=10.0,
+        base_wr=0.45,
+        base_hit=5,
+        base_blew=3,
+        base_mean=8.0,
+        n_closes=400,
+        base_closes=160,
+    )
+
+
+def test_actor_day_weight_hit_extra_blew_zero():
+    assert actor_day_weight("HIT") == 2.0
+    assert actor_day_weight("MISS") == 0.15
+    assert actor_day_weight("SKIP") == 0.15
+    assert actor_day_weight("BLEW") == 0.0
+    assert actor_day_weight("HIT") > actor_day_weight("MISS") > actor_day_weight("BLEW")

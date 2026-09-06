@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from v6rl.product import (
+    AUX_MOMENTUM_HOLD_WEIGHT,
     AUX_MULTI_CHANNEL_WEIGHT,
+    AUX_PULLBACK_RES_WEIGHT,
     BERLIN,
     HIDDEN_DAYS_CARD1,
     LEVERAGE,
@@ -69,6 +71,9 @@ class TrainConfig:
     entropy_floor: float = ENTROPY_FLOOR
     value_coef: float = 0.5
     aux_coef: float = AUX_MULTI_CHANNEL_WEIGHT
+    aux_momentum_coef: float = AUX_MOMENTUM_HOLD_WEIGHT
+    aux_pullback_coef: float = AUX_PULLBACK_RES_WEIGHT
+    occupancy_keep: bool = True
     lot_coef: float = 0.1
     size_coef: float = 0.1
     rollout_steps: int = 2048
@@ -86,6 +91,9 @@ class TrainConfig:
     until_hit_streak: int = 0
     keep_window_days: int = 100
     keep_min_printable: int = 20
+    primary_only_updates: int = 0
+    close_only_updates: int = 0
+    day_only_updates: int = 0
 
 
 def explore_eps(train_day_index: int) -> float:

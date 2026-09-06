@@ -24,6 +24,8 @@ class PolicyNet(nn.Module):
         self.lot = nn.Linear(gru_hidden, 1)
         self.size_ab = nn.Linear(gru_hidden, 2)
         self.aux_ride = nn.Linear(gru_hidden, 1)
+        self.aux_momentum_hold = nn.Linear(gru_hidden, 1)
+        self.aux_pullback_resolution = nn.Linear(gru_hidden, 1)
         nn.init.orthogonal_(self.actor.weight, 0.01)
         nn.init.zeros_(self.actor.bias)
         nn.init.constant_(self.lot.bias, 1.4)
@@ -52,6 +54,8 @@ class PolicyNet(nn.Module):
             "size_dist": size_dist,
             "actor_logits": logits,
             "aux_logit": self.aux_ride(z).squeeze(-1),
+            "aux_mom_logit": self.aux_momentum_hold(z).squeeze(-1),
+            "aux_pb_logit": self.aux_pullback_resolution(z).squeeze(-1),
         }
 
     def step(self, obs: torch.Tensor, mask: torch.Tensor, hidden: torch.Tensor | None = None):
@@ -88,3 +92,28 @@ class PolicyNet(nn.Module):
         y, h = self.gru(x[start:t_len].unsqueeze(0), h)
         parts.append(y.squeeze(0))
         return self._heads(torch.cat(parts, 0), mask), h
+
+
+def load_net_flexible(net, state: dict) -> list[str]:
+    """Pad OBS grow + skip new heads. Used when resuming keep (133→139)."""
+    own = net.state_dict()
+    notes = []
+    merged = dict(own)
+    for k, v in state.items():
+        if k not in own:
+            notes.append(f"skip {k}")
+            continue
+        if own[k].shape == v.shape:
+            merged[k] = v
+            continue
+        if k == "enc.0.weight":
+            w = own[k].clone()
+            rows = min(w.size(0), v.size(0))
+            cols = min(w.size(1), v.size(1))
+            w[:rows, :cols] = v[:rows, :cols]
+            merged[k] = w
+            notes.append(f"{k} {tuple(v.shape)}→{tuple(w.shape)}")
+            continue
+        notes.append(f"fresh {k} {tuple(v.shape)}→{tuple(own[k].shape)}")
+    net.load_state_dict(merged)
+    return notes

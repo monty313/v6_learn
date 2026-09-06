@@ -5,7 +5,15 @@ from __future__ import annotations
 import numpy as np
 
 from v6rl.book import Book
-from v6rl.product import MIN_LOT, RISK_PCT_MAX, RISK_PCT_MIN, RISK_WALK, START_EQUITY, TRAIN_BINS
+from v6rl.product import (
+    MIN_LOT,
+    RISK_PCT_MAX,
+    RISK_PCT_MIN,
+    RISK_WALK,
+    START_EQUITY,
+    TRAIN_BINS,
+    target_bin,
+)
 from v6rl.symbols import SPECS, dollars_per_price, max_lot_leverage
 from v6rl.tape import Tape
 
@@ -73,3 +81,65 @@ def draw_funded_tr(rng, tape: Tape, date, equity: float, bins=None) -> tuple[flo
     target = float(min(pool))
     risk = float(RISK_PCT_MAX)
     return target, risk, bool(day_can_print(tape, date, target, risk, equity))
+
+
+def tr_key(date, target_pct: float, risk_pct: float) -> tuple:
+    """Integer T/R key for one calendar date in this resume. risk_bps = round(risk% * 100)."""
+    return (
+        str(date)[:10],
+        int(round(float(target_bin(target_pct)))),
+        int(round(float(risk_pct) * 100.0)),
+    )
+
+
+def pick_unique_tr(date, used: set, rng, can_print, bins=None) -> tuple[float, float, bool]:
+    """Train wrap: never reuse a (date, bin, risk_bps) already used this resume."""
+    pool = tuple(bins) if bins is not None else tuple(TRAIN_BINS)
+    if not pool:
+        pool = tuple(TRAIN_BINS)
+    used = used if used is not None else set()
+    for _ in range(24):
+        target = float(rng.choice(pool))
+        risk = float(rng.uniform(RISK_PCT_MIN, RISK_PCT_MAX))
+        if not can_print(target, risk):
+            continue
+        key = tr_key(date, target, risk)
+        if key not in used:
+            used.add(key)
+            return target, risk, True
+    for target in sorted(float(b) for b in pool):
+        for risk in RISK_WALK:
+            key = tr_key(date, target, risk)
+            if key in used:
+                continue
+            if can_print(target, risk):
+                used.add(key)
+                return float(target), float(risk), True
+    steps = int(round((RISK_PCT_MAX - RISK_PCT_MIN) / 0.01)) + 1
+    for target in sorted(float(b) for b in pool):
+        for i in range(steps):
+            risk = round(RISK_PCT_MIN + i * 0.01, 2)
+            key = tr_key(date, target, risk)
+            if key in used:
+                continue
+            if can_print(target, risk):
+                used.add(key)
+                return float(target), float(risk), True
+    for target in sorted(float(b) for b in pool):
+        for i in range(steps):
+            risk = round(RISK_PCT_MIN + i * 0.01, 2)
+            key = tr_key(date, target, risk)
+            if key not in used:
+                used.add(key)
+                return float(target), float(risk), bool(can_print(target, risk))
+    raise RuntimeError(f"unique T/R exhausted for {date}")
+
+
+def draw_unique_funded_tr(rng, tape: Tape, date, equity: float, used: set, bins=None) -> tuple[float, float, bool]:
+    return pick_unique_tr(
+        date,
+        used,
+        rng,
+        lambda t, r: day_can_print(tape, date, t, r, equity),
+        bins,
+    )
