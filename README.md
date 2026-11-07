@@ -1,48 +1,64 @@
-# Desktop version 6
+# v6_learn
 
-One frozen day-trading policy. A human types today’s **target %** (3–35) and **risk %** (1–6) of a **$10,000** account. Those numbers are observations, not weights.
+## Project mission
+Build and maintain the v6 learn project with reliable setup, execution, and delivery workflows.
 
-US30 only. Session: London 08:00–17:00 Europe/London **or** NY cash 09:30–16:00 America/New_York.
+## What this repository currently contains
+Top-level structure:
+- `.cursor` (dir)
+- `.gitignore` (file)
+- `HANDOFF_IRAC.md` (file)
+- `INDICATOR_OBS_SETS_V6 (1).md` (file)
+- `LESSONS_BOOK.md` (file)
+- `pyproject.toml` (file)
+- `README.md` (file)
+- `runs` (dir)
+- `spec` (dir)
+- `tests` (dir)
+- `v6rl` (dir)
 
-## Card 1 smoke (not 100-day Done)
+Primary languages/tooling detected: Python (29), Markdown (14)
 
-```
-python -m v6rl train --updates 5 --hide-days 20
-```
+Likely key implementation files:
+- `README.md`
 
-Prints `obs_dim` and the named OBS dump **before** train. Evaluates greedy hide-20 vs the same-day untrained greedy baseline.
+## Quickstart (operator + LLM friendly)
+Use this sequence first, then adapt to repo-specific details.
 
-## Live board (does not sit on the train path)
+1. Clone and enter repo:
+   ```bash
+   git clone https://github.com/monty313/v6_learn.git
+   cd v6_learn
+   ```
+2. Setup environment/dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .
+   ```
+3. Run locally:
+   ```bash
+   python main.py  # adjust to project entrypoint
+   ```
+4. Validate changes:
+   ```bash
+   pytest -q
+   ```
 
-Train writes one small `live.json` when a day closes (and once per PPO update). The page only polls that file.
+## Operating intent (CEO-mode guide for future LLMs)
+When continuing this project, optimize for business outcome first:
 
-```
-python -m v6rl serve --run-dir runs/live
-python -m v6rl train --updates 20 --hide-days 20 --run-dir runs/live --resume runs/card1/ckpt.pt --no-eval
-```
+- Preserve or improve strategy quality, reliability, and reproducibility.
+- Prefer small, testable, reversible changes over broad rewrites.
+- Keep docs synchronized with code behavior.
+- Add explicit assumptions, constraints, and success criteria in every major change.
 
-Open `http://127.0.0.1:8768/live.html` (V6 only). Port **8766** is the other bot’s Box keep board — do not use it for V6. `--no-eval` skips the hide-20 double walk so watching does not redo the exam. Tape cache is reused. Never `--rebuild-tape` unless the CSV changed.
+## Delivery checklist
+- [ ] Environment setup is deterministic.
+- [ ] Primary run path is documented and works.
+- [ ] Validation/test path is documented and works.
+- [ ] Key risks and TODOs are tracked in the handoff file.
 
-## Price data
-
-Primary M1 CSV:
-
-`C:\Users\C2K\Desktop\v4\data\US30_M1_202007231046_202605262359.csv`
-
-Tape cache (new version key, never overwrites v4/v5 pickles):
-
-`C:\Users\C2K\Desktop\V6\data\cache\`
-
-### Optional MT5 → CSV refresh (does not block card 1)
-
-1. In MetaTrader 5: View → Symbols → US30 → Bars.
-2. Export M1 as tab-separated `<DATE> <TIME> <OPEN> <HIGH> <LOW> <CLOSE>`.
-3. Replace the file above (or point `CSV_DATA_DIR`).
-4. Rebuild the V6 tape only: `python -m v6rl train --rebuild-tape --updates 5 --hide-days 20`.
-
-## Locks
-
-- Entry door is HA only (15m/5m same color ≥2, 1m opposite ≥1). Door printed ≠ forced enter.
-- HIT / BLEW flatten-all and stop the day.
-- No leftover-force, leftover-bank, leftover-cut, ADD, or W1–W4 hunt.
-- Never `--from-scratch`. Resume `runs/keep/ckpt.pt` once it exists. Island birth only when no keep exists.
+## Branch and release notes
+- Default branch: `main`
+- Keep PRs focused and attach proof-of-run or proof-of-test for behavior changes.
